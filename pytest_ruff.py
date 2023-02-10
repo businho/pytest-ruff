@@ -7,8 +7,8 @@ HISTKEY = "ruff/mtimes"
 
 
 def pytest_addoption(parser):
-    group = parser.getgroup("ruff")
-    group.addoption('--ruff', action='store_true')
+    group = parser.getgroup("general")
+    group.addoption('--ruff', action='store_true', help="enable checking with ruff")
 
 
 def pytest_configure(config):
@@ -20,6 +20,9 @@ def pytest_configure(config):
 def pytest_collect_file(file_path, path, parent):
     config = parent.config
     if not config.option.ruff:
+        return
+
+    if file_path.suffix != ".py":
         return
 
     item = RuffFile.from_parent(parent, path=file_path)
@@ -52,7 +55,7 @@ class RuffItem(pytest.Item):
         self._ruffmtime = self.fspath.mtime()
         old = ruffmtimes.get(str(self.fspath))
         if old == self._ruffmtime:
-            pytest.skip("file(s) previously passed ruff checks")
+            pytest.skip("file previously passed ruff checks")
 
     def runtest(self):
         check_file(self.fspath)
@@ -61,11 +64,11 @@ class RuffItem(pytest.Item):
 
     def repr_failure(self, excinfo):
         if excinfo.errisinstance(RuffError):
-            return excinfo.value.args[0]
+            return excinfo.value.args[0].decode()
         return super().repr_failure(excinfo)
 
     def reportinfo(self):
-        return (self.fspath, -1, "ruff-check")
+        return (self.fspath, None, "")
 
 
 def check_file(path):
