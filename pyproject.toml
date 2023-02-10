@@ -26,5 +26,8 @@ enable = true
 [tool.pytest.ini_options]
 addopts = "--capture=no"
 
+[tool.ruff]
+line-length = 88
+
 [tool.poetry.plugins]
 pytest11 = { ruff = "pytest_ruff" }
