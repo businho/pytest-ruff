@@ -12,6 +12,7 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    config.addinivalue_line("markers", "ruff: Tests which run ruff.")
     if config.option.ruff:
         if hasattr(config, 'cache'):
             config._ruffmtimes = config.cache.get(HISTKEY, {})
