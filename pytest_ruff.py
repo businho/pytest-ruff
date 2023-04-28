@@ -26,8 +26,7 @@ def pytest_collect_file(file_path, path, parent):
     if file_path.suffix != ".py":
         return
 
-    item = RuffFile.from_parent(parent, path=file_path)
-    return item
+    return RuffFile.from_parent(parent, path=file_path)
 
 
 def pytest_unconfigure(config):
@@ -63,19 +62,14 @@ class RuffItem(pytest.Item):
         if hasattr(self.config, "_ruffmtimes"):
             self.config._ruffmtimes[str(self.fspath)] = self._ruffmtime
 
-    def repr_failure(self, excinfo):
-        if excinfo.errisinstance(RuffError):
-            return excinfo.value.args[0].decode()
-        return super().repr_failure(excinfo)
-
     def reportinfo(self):
         return (self.fspath, None, "")
 
 
 def check_file(path):
     ruff = find_ruff_bin()
-    command = f"{ruff} {path} --quiet"
+    command = f"{ruff} {path} --quiet --show-source"
     child = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
-    stdout, stderr = child.communicate()
+    stdout, _ = child.communicate()
     if stdout:
-        raise RuffError(stdout, stderr)
+        raise RuffError(stdout.decode())
