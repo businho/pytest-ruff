@@ -15,7 +15,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-ruff = "*"
+ruff = ">=0.0.242"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
