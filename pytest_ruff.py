@@ -1,10 +1,12 @@
 from subprocess import Popen, PIPE
+# Python<=3.8 don't support typing with builtin dict.
+from typing import Dict
 
 import pytest
 from ruff.__main__ import find_ruff_bin
 
 HISTKEY = "ruff/mtimes"
-_mtimes_stash_key = pytest.StashKey[dict[str, float]]()
+_mtimes_stash_key = pytest.StashKey[Dict[str, float]]()
 
 
 def pytest_addoption(parser):
