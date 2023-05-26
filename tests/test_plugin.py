@@ -10,7 +10,7 @@ def test_configure(mocker):
         stash=pytest.Stash(),
     )
     pytest_ruff.pytest_configure(config)
-    assert config.stash[pytest_ruff._mtimes_stash_key] == mocker.sentinel.cache
+    assert config.stash[pytest_ruff._MTIMES_STASH_KEY] == mocker.sentinel.cache
 
 
 def test_configure_without_ruff(mocker):
@@ -22,7 +22,7 @@ def test_configure_without_ruff(mocker):
     )
     pytest_ruff.pytest_configure(config)
     with pytest.raises(KeyError):
-        config.stash[pytest_ruff._mtimes_stash_key]
+        config.stash[pytest_ruff._MTIMES_STASH_KEY]
 
 
 def test_check_file():

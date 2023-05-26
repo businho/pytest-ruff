@@ -6,7 +6,7 @@ import pytest
 from ruff.__main__ import find_ruff_bin
 
 HISTKEY = "ruff/mtimes"
-_mtimes_stash_key = pytest.StashKey[Dict[str, float]]()
+_MTIMES_STASH_KEY = pytest.StashKey[Dict[str, float]]()
 
 
 def pytest_addoption(parser):
@@ -16,8 +16,11 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "ruff: Tests which run ruff.")
-    if config.option.ruff and hasattr(config, "cache"):
-            config.stash[_mtimes_stash_key] = config.cache.get(HISTKEY, {})
+
+    if not config.option.ruff or not hasattr(config, "cache"):
+        return
+
+    config.stash[_MTIMES_STASH_KEY] = config.cache.get(HISTKEY, {})
 
 
 def pytest_collect_file(file_path, path, parent):
@@ -34,14 +37,14 @@ def pytest_collect_file(file_path, path, parent):
 def pytest_sessionfinish(session, exitstatus):
     config = session.config
 
-    if not config.option.ruff:
+    if not config.option.ruff or not hasattr(config, "cache"):
         return
 
     # Update cache only in pytest-xdist controller.
     # It works fine if pytest-xdist is not being used.
     if not hasattr(config, "workerinput"):
         cache = config.cache.get(HISTKEY, {})
-        cache.update(config.stash[_mtimes_stash_key])
+        cache.update(config.stash[_MTIMES_STASH_KEY])
         config.cache.set(HISTKEY, cache)
 
 
@@ -60,7 +63,7 @@ class RuffItem(pytest.Item):
         self.add_marker("ruff")
 
     def setup(self):
-        ruffmtimes = self.config.stash.get(_mtimes_stash_key, {})
+        ruffmtimes = self.config.stash.get(_MTIMES_STASH_KEY, {})
         self._ruffmtime = self.fspath.mtime()
         old = ruffmtimes.get(str(self.fspath))
         if old == self._ruffmtime:
@@ -68,7 +71,7 @@ class RuffItem(pytest.Item):
 
     def runtest(self):
         check_file(self.fspath)
-        ruffmtimes = self.config.stash.get(_mtimes_stash_key, None)
+        ruffmtimes = self.config.stash.get(_MTIMES_STASH_KEY, None)
         if ruffmtimes:
             ruffmtimes[str(self.fspath)] = self._ruffmtime
 
