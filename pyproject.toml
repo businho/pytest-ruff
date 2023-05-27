@@ -20,15 +20,26 @@ ruff = ">=0.0.242"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
 pytest-mock = "^3.10.0"
+pytest-cov = "^4.1.0"
 
 [tool.poetry-dynamic-versioning]
 enable = true
 
 [tool.pytest.ini_options]
-addopts = "--capture=no"
+addopts = "--capture=no --cov"
 
 [tool.ruff]
 line-length = 88
 
 [tool.poetry.plugins]
 pytest11 = { ruff = "pytest_ruff" }
+
+[tool.coverage.run]
+branch = true
+concurrency = ["multiprocessing"]
+parallel = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = true
