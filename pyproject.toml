@@ -36,8 +36,6 @@ pytest11 = { ruff = "pytest_ruff" }
 
 [tool.coverage.run]
 branch = true
-concurrency = ["multiprocessing"]
-parallel = true
 
 [tool.coverage.report]
 precision = 2
