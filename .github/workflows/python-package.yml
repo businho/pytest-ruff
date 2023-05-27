@@ -32,3 +32,8 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.python-version }}-tox-${{ hashFiles('pyproject.toml') }} }}
     - name: Test with tox
       run: tox -v
+    - uses: codecov/codecov-action@v3
+      env:
+        token: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        verbose: true
