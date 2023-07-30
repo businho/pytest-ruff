@@ -81,8 +81,8 @@ class RuffItem(pytest.Item):
 
 def check_file(path):
     ruff = find_ruff_bin()
-    command = f"{ruff} {path} --quiet --show-source"
-    child = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
+    command = [ruff, path, '--quiet', '--show-source']
+    child = Popen(command, stdout=PIPE, stderr=PIPE)
     stdout, _ = child.communicate()
     if stdout:
         raise RuffError(stdout.decode())
