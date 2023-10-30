@@ -27,4 +27,9 @@ def test_configure_without_ruff(mocker):
 
 def test_check_file():
     with pytest.raises(pytest_ruff.RuffError, match=r"`os` imported but unused"):
-        pytest_ruff.check_file("tests/assets/broken.py")
+        pytest_ruff.check_file("tests/assets/check_broken.py")
+
+
+def test_format_file():
+    with pytest.raises(pytest_ruff.RuffError, match=r"File would be reformatted"):
+        pytest_ruff.format_file("tests/assets/format_broken.py")

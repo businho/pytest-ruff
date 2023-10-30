@@ -11,10 +11,12 @@ pip install pytest-ruff
 ## Usage
 
 ```shell
-pytest --ruff
+pytest --ruff --ruff-format
 ```
 
 The plugin will run one ruff check test per file and fail if code is not ok for ruff.
+
+Format command only checks for format and fails for formatting errors.
 
 ## Configuration
 

@@ -12,6 +12,7 @@ _MTIMES_STASH_KEY = pytest.StashKey[Dict[str, float]]()
 def pytest_addoption(parser):
     group = parser.getgroup("general")
     group.addoption("--ruff", action="store_true", help="enable checking with ruff")
+    group.addoption("--ruff-format", action="store_true", help="enable format checking with ruff")
 
 
 def pytest_configure(config):
@@ -54,10 +55,34 @@ class RuffError(Exception):
 
 class RuffFile(pytest.File):
     def collect(self):
-        return [RuffItem.from_parent(self, name="ruff")]
+        return [
+            RuffItem.from_parent(self, name="ruff"),
+            RuffFormatItem.from_parent(self, name="ruff::format"),
+        ]
+
+
+def check_file(path):
+    ruff = find_ruff_bin()
+    command = [ruff, "check", path, '--quiet', '--show-source']
+    child = Popen(command, stdout=PIPE, stderr=PIPE)
+    stdout, _ = child.communicate()
+    if stdout:
+        raise RuffError(stdout.decode())
+
+
+def format_file(path):
+    ruff = find_ruff_bin()
+    command = [ruff, "format", path, '--quiet', '--check']
+    with Popen(command) as child:
+        pass
+
+    if child.returncode == 1:
+        raise RuffError("File would be reformatted")
 
 
 class RuffItem(pytest.Item):
+    handler = check_file
+
     def __init__(self, *k, **kwargs):
         super().__init__(*k, **kwargs)
         self.add_marker("ruff")
@@ -70,7 +95,8 @@ class RuffItem(pytest.Item):
             pytest.skip("file previously passed ruff checks")
 
     def runtest(self):
-        check_file(self.fspath)
+        self.handler(self.fspath)
+
         ruffmtimes = self.config.stash.get(_MTIMES_STASH_KEY, None)
         if ruffmtimes:
             ruffmtimes[str(self.fspath)] = self._ruffmtime
@@ -79,10 +105,5 @@ class RuffItem(pytest.Item):
         return (self.fspath, None, "")
 
 
-def check_file(path):
-    ruff = find_ruff_bin()
-    command = [ruff, path, '--quiet', '--show-source']
-    child = Popen(command, stdout=PIPE, stderr=PIPE)
-    stdout, _ = child.communicate()
-    if stdout:
-        raise RuffError(stdout.decode())
+class RuffFormatItem(RuffItem):
+    handler = format_file
