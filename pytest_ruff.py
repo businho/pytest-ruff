@@ -63,7 +63,7 @@ class RuffFile(pytest.File):
 
 def check_file(path):
     ruff = find_ruff_bin()
-    command = [ruff, "check", path, '--quiet', '--show-source']
+    command = [ruff, "check", path, '--quiet', '--show-source', 'force-exclude']
     child = Popen(command, stdout=PIPE, stderr=PIPE)
     stdout, _ = child.communicate()
     if stdout:
@@ -72,7 +72,7 @@ def check_file(path):
 
 def format_file(path):
     ruff = find_ruff_bin()
-    command = [ruff, "format", path, '--quiet', '--check']
+    command = [ruff, "format", path, '--quiet', '--check', '--force-exclude']
     with Popen(command) as child:
         pass
 
