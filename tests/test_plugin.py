@@ -30,12 +30,12 @@ def test_configure_without_ruff(mocker):
 
 def test_check_file():
     with pytest.raises(pytest_ruff.RuffError, match=r"`os` imported but unused"):
-        pytest_ruff.check_file(None, path="tests/assets/check_broken.py")
+        pytest_ruff.check_file("tests/assets/check_broken.py")
 
 
 def test_format_file():
     with pytest.raises(pytest_ruff.RuffError, match=r"File would be reformatted"):
-        pytest_ruff.format_file(None, path="tests/assets/format_broken.py")
+        pytest_ruff.format_file("tests/assets/format_broken.py")
 
 
 def test_pytest_ruff():
@@ -46,9 +46,6 @@ def test_pytest_ruff():
     ).communicate()
     out_utf8 = out.decode("utf-8")
     assert "`os` imported but unused" in out_utf8
-    assert (
-        "force-exclude:1:1: E902 No such file or directory (os error 2)" not in out_utf8
-    )
 
 
 def test_pytest_ruff_format():

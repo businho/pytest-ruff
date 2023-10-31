@@ -58,13 +58,14 @@ class RuffError(Exception):
 
 class RuffFile(pytest.File):
     def collect(self):
-        return [
-            RuffItem.from_parent(self, name="ruff"),
-            RuffFormatItem.from_parent(self, name="ruff::format"),
-        ]
+        collection = []
+        if self.config.option.ruff:
+            collection.append(RuffItem)
+        if self.config.option.ruff_format:
+            collection.append(RuffFormatItem.from_parent(self, name="ruff::format"))
+        return [Item.from_parent(self, name=Item.name) for Item in collection]
 
-
-def check_file(self, path):
+def check_file(path):
     ruff = find_ruff_bin()
     command = [ruff, "check", path, "--quiet", "--show-source", "--force-exclude"]
     child = Popen(command, stdout=PIPE, stderr=PIPE)
@@ -73,7 +74,7 @@ def check_file(self, path):
         raise RuffError(stdout.decode())
 
 
-def format_file(self, path):
+def format_file(path):
     ruff = find_ruff_bin()
     command = [ruff, "format", path, "--quiet", "--check", "--force-exclude"]
     with Popen(command) as child:
@@ -84,7 +85,7 @@ def format_file(self, path):
 
 
 class RuffItem(pytest.Item):
-    handler = check_file
+    name = "ruff"
 
     def __init__(self, *k, **kwargs):
         super().__init__(*k, **kwargs)
@@ -107,6 +108,12 @@ class RuffItem(pytest.Item):
     def reportinfo(self):
         return (self.fspath, None, "")
 
+    def handler(self, path):
+        return check_file(path)
+
 
 class RuffFormatItem(RuffItem):
-    handler = format_file
+    name = "ruff::format"
+
+    def handler(self, path):
+        return format_file(path)
