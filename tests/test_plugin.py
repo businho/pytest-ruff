@@ -46,7 +46,9 @@ def test_pytest_ruff():
     ).communicate()
     out_utf8 = out.decode("utf-8")
     assert "`os` imported but unused" in out_utf8
-    assert "force-exclude:1:1: E902 No such file or directory (os error 2)" not in out_utf8
+    assert (
+        "force-exclude:1:1: E902 No such file or directory (os error 2)" not in out_utf8
+    )
 
 
 def test_pytest_ruff_format():

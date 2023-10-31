@@ -1,4 +1,5 @@
 from subprocess import Popen, PIPE
+
 # Python<=3.8 don't support typing with builtin dict.
 from typing import Dict
 
@@ -12,7 +13,9 @@ _MTIMES_STASH_KEY = pytest.StashKey[Dict[str, float]]()
 def pytest_addoption(parser):
     group = parser.getgroup("general")
     group.addoption("--ruff", action="store_true", help="enable checking with ruff")
-    group.addoption("--ruff-format", action="store_true", help="enable format checking with ruff")
+    group.addoption(
+        "--ruff-format", action="store_true", help="enable format checking with ruff"
+    )
 
 
 def pytest_configure(config):
@@ -63,7 +66,7 @@ class RuffFile(pytest.File):
 
 def check_file(self, path):
     ruff = find_ruff_bin()
-    command = [ruff, "check", path, '--quiet', '--show-source', '--force-exclude']
+    command = [ruff, "check", path, "--quiet", "--show-source", "--force-exclude"]
     child = Popen(command, stdout=PIPE, stderr=PIPE)
     stdout, _ = child.communicate()
     if stdout:
@@ -72,7 +75,7 @@ def check_file(self, path):
 
 def format_file(self, path):
     ruff = find_ruff_bin()
-    command = [ruff, "format", path, '--quiet', '--check', '--force-exclude']
+    command = [ruff, "format", path, "--quiet", "--check", "--force-exclude"]
     with Popen(command) as child:
         pass
 
