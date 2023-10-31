@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 import pytest
 
 import pytest_ruff
@@ -33,3 +36,44 @@ def test_check_file():
 def test_format_file():
     with pytest.raises(pytest_ruff.RuffError, match=r"File would be reformatted"):
         pytest_ruff.format_file("tests/assets/format_broken.py")
+
+
+def test_pytest_ruff():
+    out, err = subprocess.Popen(
+        [sys.executable, "-m", "pytest", "--ruff", "tests/assets/check_broken.py"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).communicate()
+    out_utf8 = out.decode("utf-8")
+    assert "`os` imported but unused" in out_utf8
+
+
+def test_pytest_ruff_format():
+    out, err = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--ruff",
+            "--ruff-format",
+            "tests/assets/format_broken.py",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).communicate()
+    assert "File would be reformatted" in out.decode("utf-8")
+
+
+def test_pytest_ruff_noformat():
+    out, err = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--ruff",
+            "tests/assets/format_broken.py",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).communicate()
+    assert "File would be reformatted" not in out.decode("utf-8")

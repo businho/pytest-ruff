@@ -1,4 +1,5 @@
 from subprocess import Popen, PIPE
+
 # Python<=3.8 don't support typing with builtin dict.
 from typing import Dict
 
@@ -12,7 +13,9 @@ _MTIMES_STASH_KEY = pytest.StashKey[Dict[str, float]]()
 def pytest_addoption(parser):
     group = parser.getgroup("general")
     group.addoption("--ruff", action="store_true", help="enable checking with ruff")
-    group.addoption("--ruff-format", action="store_true", help="enable format checking with ruff")
+    group.addoption(
+        "--ruff-format", action="store_true", help="enable format checking with ruff"
+    )
 
 
 def pytest_configure(config):
@@ -55,15 +58,16 @@ class RuffError(Exception):
 
 class RuffFile(pytest.File):
     def collect(self):
-        return [
-            RuffItem.from_parent(self, name="ruff"),
-            RuffFormatItem.from_parent(self, name="ruff::format"),
-        ]
-
+        collection = []
+        if self.config.option.ruff:
+            collection.append(RuffItem)
+        if self.config.option.ruff_format:
+            collection.append(RuffFormatItem.from_parent(self, name="ruff::format"))
+        return [Item.from_parent(self, name=Item.name) for Item in collection]
 
 def check_file(path):
     ruff = find_ruff_bin()
-    command = [ruff, "check", path, '--quiet', '--show-source', 'force-exclude']
+    command = [ruff, "check", path, "--quiet", "--show-source", "--force-exclude"]
     child = Popen(command, stdout=PIPE, stderr=PIPE)
     stdout, _ = child.communicate()
     if stdout:
@@ -72,7 +76,7 @@ def check_file(path):
 
 def format_file(path):
     ruff = find_ruff_bin()
-    command = [ruff, "format", path, '--quiet', '--check', '--force-exclude']
+    command = [ruff, "format", path, "--quiet", "--check", "--force-exclude"]
     with Popen(command) as child:
         pass
 
@@ -81,7 +85,7 @@ def format_file(path):
 
 
 class RuffItem(pytest.Item):
-    handler = check_file
+    name = "ruff"
 
     def __init__(self, *k, **kwargs):
         super().__init__(*k, **kwargs)
@@ -95,7 +99,7 @@ class RuffItem(pytest.Item):
             pytest.skip("file previously passed ruff checks")
 
     def runtest(self):
-        self.handler(self.fspath)
+        self.handler(path=self.fspath)
 
         ruffmtimes = self.config.stash.get(_MTIMES_STASH_KEY, None)
         if ruffmtimes:
@@ -104,6 +108,12 @@ class RuffItem(pytest.Item):
     def reportinfo(self):
         return (self.fspath, None, "")
 
+    def handler(self, path):
+        return check_file(path)
+
 
 class RuffFormatItem(RuffItem):
-    handler = format_file
+    name = "ruff::format"
+
+    def handler(self, path):
+        return format_file(path)
