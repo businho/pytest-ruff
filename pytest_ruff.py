@@ -73,8 +73,6 @@ def check_file(self, path):
 def format_file(self, path):
     ruff = find_ruff_bin()
     command = [ruff, "format", path, '--quiet', '--check', '--force-exclude']
-    import sys
-    print(command, file=sys.stderr)
     with Popen(command) as child:
         pass
 
