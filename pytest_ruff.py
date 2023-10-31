@@ -61,18 +61,20 @@ class RuffFile(pytest.File):
         ]
 
 
-def check_file(path):
+def check_file(self, path):
     ruff = find_ruff_bin()
-    command = [ruff, "check", path, '--quiet', '--show-source', 'force-exclude']
+    command = [ruff, "check", path, '--quiet', '--show-source', '--force-exclude']
     child = Popen(command, stdout=PIPE, stderr=PIPE)
     stdout, _ = child.communicate()
     if stdout:
         raise RuffError(stdout.decode())
 
 
-def format_file(path):
+def format_file(self, path):
     ruff = find_ruff_bin()
     command = [ruff, "format", path, '--quiet', '--check', '--force-exclude']
+    import sys
+    print(command, file=sys.stderr)
     with Popen(command) as child:
         pass
 
@@ -95,7 +97,7 @@ class RuffItem(pytest.Item):
             pytest.skip("file previously passed ruff checks")
 
     def runtest(self):
-        self.handler(self.fspath)
+        self.handler(path=self.fspath)
 
         ruffmtimes = self.config.stash.get(_MTIMES_STASH_KEY, None)
         if ruffmtimes:
