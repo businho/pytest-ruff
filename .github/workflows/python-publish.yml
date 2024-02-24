@@ -1,29 +1,24 @@
 name: Upload Python Package
 
 on:
-  release:
-    types: [published]
-
-permissions:
-  contents: read
+  pull_request:
+  push:
+    branches:
+    - "*"
+    tags:
+    - "v*"
 
 jobs:
-  deploy:
-
+  test-pypi-publish:
     runs-on: ubuntu-latest
-
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pytest-ruff
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
       uses: actions/setup-python@v3
-      with:
-        python-version: '3.x'
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-    - name: Install dependencies
-      run: |
-        poetry install
-    - name: Build and publish to pypi
-      uses: JRubics/poetry-publish@v1.15
-      with:
-        pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
