@@ -44,6 +44,7 @@ def test_pytest_ruff():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ).communicate()
+    assert err == b""
     out_utf8 = out.decode("utf-8")
     assert "`os` imported but unused" in out_utf8
 
@@ -76,4 +77,5 @@ def test_pytest_ruff_noformat():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ).communicate()
+    assert err == b""
     assert "File would be reformatted" not in out.decode("utf-8")

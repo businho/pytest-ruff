@@ -1,38 +1,36 @@
-[tool.poetry]
+[project]
 name = "pytest-ruff"
-version = "0.0.0"
 description = "pytest plugin to check ruff requirements."
-authors = ["Iuri de Silvio <iurisilvio@gmail.com>"]
+authors = [{"name" = "Iuri de Silvio", "email" = "iurisilvio@gmail.com"}]
 readme = "README.md"
 classifiers = [ "Development Status :: 4 - Beta", "Intended Audience :: Developers", "Operating System :: OS Independent", "Framework :: Pytest", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only", "Topic :: Software Development :: Libraries :: Python Modules"]
+dynamic = ["version"]
+dependencies = [
+    "ruff>=0.0.242"
+]
 
-[tool.poetry.urls]
+[project.urls]
 Homepage = "https://github.com/businho/pytest-ruff"
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry.dependencies]
-python = "^3.8"
-ruff = ">=0.0.242"
+[project.optional-dependencies]
+test = [
+    "pytest>=7.2.0",
+    "pytest-mock>=3.10.0",
+    "pytest-cov>=4.1.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.2.0"
-pytest-mock = "^3.10.0"
-pytest-cov = "^4.1.0"
-
-[tool.poetry-dynamic-versioning]
-enable = true
+[project.entry-points.pytest11]
+ruff = "pytest_ruff"
 
 [tool.pytest.ini_options]
 addopts = "--capture=no"
 
 [tool.ruff]
 line-length = 88
-
-[tool.poetry.plugins]
-pytest11 = { ruff = "pytest_ruff" }
 
 [tool.coverage.run]
 branch = true
