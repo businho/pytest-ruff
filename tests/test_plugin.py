@@ -3,6 +3,10 @@ import sys
 
 import pytest
 
+try:
+    from pytest import Stash
+except ImportError:
+    from _pytest.store import Store as Stash
 import pytest_ruff
 
 
@@ -10,7 +14,7 @@ def test_configure(mocker):
     config = mocker.Mock(
         cache={pytest_ruff.HISTKEY: mocker.sentinel.cache},
         option=mocker.Mock(ruff=True),
-        stash=pytest.Stash(),
+        stash=Stash(),
     )
     pytest_ruff.pytest_configure(config)
     assert config.stash[pytest_ruff._MTIMES_STASH_KEY] == mocker.sentinel.cache
@@ -19,7 +23,7 @@ def test_configure(mocker):
 def test_configure_without_ruff(mocker):
     config = mocker.Mock(
         option=mocker.Mock(ruff=False),
-        stash=pytest.Stash(),
+        stash=Stash(),
         # Mocking to `not hasattr(config, "cache")`.
         spec=["addinivalue_line", "option", "stash"],
     )
@@ -61,6 +65,7 @@ def test_pytest_ruff_format():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ).communicate()
+    assert err == b""
     assert "File would be reformatted" in out.decode("utf-8")
 
 
@@ -76,4 +81,5 @@ def test_pytest_ruff_noformat():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ).communicate()
+    assert err == b""
     assert "File would be reformatted" not in out.decode("utf-8")
