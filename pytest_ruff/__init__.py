@@ -1,40 +1,12 @@
 from subprocess import Popen, PIPE
 
-from pathlib import Path
-
-# Python<=3.8 don't support typing with builtin dict.
-from typing import Dict
-
 import pytest
-
-try:
-    from pytest import StashKey
-except ImportError:
-    from _pytest.store import StoreKey as StashKey
 
 from ruff.__main__ import find_ruff_bin
 
-PYTEST_VER = tuple(int(x) for x in pytest.__version__.split(".")[:2])
+from pytest_ruff._pytest_compat import get_stash, make_path_kwargs, set_stash
 
 HISTKEY = "ruff/mtimes"
-_MTIMES_STASH_KEY = StashKey[Dict[str, float]]()
-
-
-def _stash(config):
-    try:
-        return config.stash
-    except AttributeError:
-        return config._store
-
-
-def _make_path_kwargs(p):
-    """
-    Make keyword arguments passing either path or fspath, depending on pytest version.
-
-    In pytest 7.0, the `fspath` argument to Nodes has been deprecated, so we pass `path`
-    instead.
-    """
-    return dict(path=Path(p)) if PYTEST_VER >= (7, 0) else dict(fspath=p)
 
 
 def pytest_addoption(parser):
@@ -51,7 +23,7 @@ def pytest_configure(config):
     if not config.option.ruff or not hasattr(config, "cache"):
         return
 
-    _stash(config)[_MTIMES_STASH_KEY] = config.cache.get(HISTKEY, {})
+    set_stash(config, config.cache.get(HISTKEY, {}))
 
 
 def pytest_collect_file(path, parent, fspath=None):
@@ -62,7 +34,7 @@ def pytest_collect_file(path, parent, fspath=None):
     if path.ext != ".py":
         return
 
-    return RuffFile.from_parent(parent, **_make_path_kwargs(path))
+    return RuffFile.from_parent(parent, **make_path_kwargs(path))
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -75,7 +47,7 @@ def pytest_sessionfinish(session, exitstatus):
     # It works fine if pytest-xdist is not being used.
     if not hasattr(config, "workerinput"):
         cache = config.cache.get(HISTKEY, {})
-        cache.update(_stash(config)[_MTIMES_STASH_KEY])
+        cache.update(get_stash(config))
         config.cache.set(HISTKEY, cache)
 
 
@@ -120,16 +92,17 @@ class RuffItem(pytest.Item):
         self.add_marker("ruff")
 
     def setup(self):
-        ruffmtimes = _stash(self.config).get(_MTIMES_STASH_KEY, {})
+        ruffmtimes = get_stash(self.config)
         self._ruffmtime = self.fspath.mtime()
-        old = ruffmtimes.get(str(self.fspath))
-        if old == self._ruffmtime:
-            pytest.skip("file previously passed ruff checks")
+        if ruffmtimes:
+            old = ruffmtimes.get(str(self.fspath))
+            if old == self._ruffmtime:
+                pytest.skip("file previously passed ruff checks")
 
     def runtest(self):
         self.handler(path=self.fspath)
 
-        ruffmtimes = _stash(self.config).get(_MTIMES_STASH_KEY, None)
+        ruffmtimes = get_stash(self.config)
         if ruffmtimes:
             ruffmtimes[str(self.fspath)] = self._ruffmtime
 

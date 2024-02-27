@@ -3,11 +3,8 @@ import sys
 
 import pytest
 
-try:
-    from pytest import Stash
-except ImportError:
-    from _pytest.store import Store as Stash
 import pytest_ruff
+from pytest_ruff._pytest_compat import Stash, get_stash
 
 
 def test_configure(mocker):
@@ -17,19 +14,18 @@ def test_configure(mocker):
         stash=Stash(),
     )
     pytest_ruff.pytest_configure(config)
-    assert config.stash[pytest_ruff._MTIMES_STASH_KEY] == mocker.sentinel.cache
+    assert get_stash(config) == mocker.sentinel.cache
 
 
 def test_configure_without_ruff(mocker):
     config = mocker.Mock(
         option=mocker.Mock(ruff=False),
-        stash=Stash(),
         # Mocking to `not hasattr(config, "cache")`.
         spec=["addinivalue_line", "option", "stash"],
     )
+    set_stash_mock = mocker.patch("pytest_ruff.set_stash", spec=True)
     pytest_ruff.pytest_configure(config)
-    with pytest.raises(KeyError):
-        config.stash[pytest_ruff._MTIMES_STASH_KEY]
+    set_stash_mock.assert_not_called()
 
 
 def test_check_file():
@@ -65,7 +61,7 @@ def test_pytest_ruff_format():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ).communicate()
-    assert err == b""
+    assert err.decode() == ""
     assert "File would be reformatted" in out.decode("utf-8")
 
 
@@ -81,5 +77,5 @@ def test_pytest_ruff_noformat():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ).communicate()
-    assert err == b""
+    assert err.decode() == ""
     assert "File would be reformatted" not in out.decode("utf-8")
