@@ -1,6 +1,6 @@
 __pycache__/
 .tox/
 
-.coverage*
+.coverage
 coverage*.xml
 poetry.lock
