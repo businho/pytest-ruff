@@ -65,6 +65,7 @@ class RuffFile(pytest.File):
             collection.append(RuffFormatItem.from_parent(self, name="ruff::format"))
         return [Item.from_parent(self, name=Item.name) for Item in collection]
 
+
 def check_file(path):
     ruff = find_ruff_bin()
     command = [ruff, "check", path, "--quiet", "--show-source", "--force-exclude"]
