@@ -22,8 +22,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install uv
-        python -m uv pip install tox tox-gh-actions
+        pip install uv
+        uv venv
+        uv pip install tox tox-gh-actions
     - name: Cache tox environments
       id: cache-tox
       uses: actions/cache@v3
