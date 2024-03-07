@@ -27,6 +27,9 @@ enable = true
 
 [tool.pytest.ini_options]
 addopts = "--capture=no"
+filterwarnings = [
+    "error",
+]
 
 [tool.ruff]
 line-length = 88
