@@ -4,7 +4,12 @@ import pytest
 
 from ruff.__main__ import find_ruff_bin
 
-from pytest_ruff._pytest_compat import get_stash, make_path_kwargs, set_stash
+from pytest_ruff._pytest_compat import (
+    get_stash,
+    make_path_kwargs,
+    set_stash,
+    PYTEST_VER,
+)
 
 HISTKEY = "ruff/mtimes"
 
@@ -26,15 +31,29 @@ def pytest_configure(config):
     set_stash(config, config.cache.get(HISTKEY, {}))
 
 
-def pytest_collect_file(path, parent, fspath=None):
-    config = parent.config
-    if not config.option.ruff:
-        return
+if PYTEST_VER >= (7, 0):
 
-    if path.ext != ".py":
-        return
+    def pytest_collect_file(file_path, parent, fspath=None):
+        config = parent.config
+        if not config.option.ruff:
+            return
 
-    return RuffFile.from_parent(parent, **make_path_kwargs(path))
+        if file_path.suffix != ".py":
+            return
+
+        return RuffFile.from_parent(parent, **make_path_kwargs(file_path))
+
+else:
+
+    def pytest_collect_file(path, parent, fspath=None):
+        config = parent.config
+        if not config.option.ruff:
+            return
+
+        if path.ext != ".py":
+            return
+
+        return RuffFile.from_parent(parent, **make_path_kwargs(path))
 
 
 def pytest_sessionfinish(session, exitstatus):
