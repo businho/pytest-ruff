@@ -103,6 +103,11 @@ def format_file(path):
         raise RuffError("File would be reformatted")
 
 
+def pytest_exception_interact(node, call, report):
+    if isinstance(call.excinfo.value, RuffError):
+        report.longrepr = str(call.excinfo.value)
+
+
 class RuffItem(pytest.Item):
     name = "ruff"
 
