@@ -86,7 +86,14 @@ class RuffFile(pytest.File):
 
 def check_file(path):
     ruff = find_ruff_bin()
-    command = [ruff, "check", path, "--quiet", "--show-source", "--force-exclude"]
+    command = [
+        ruff,
+        "check",
+        path,
+        "--quiet",
+        "--output-format=full",
+        "--force-exclude",
+    ]
     child = Popen(command, stdout=PIPE, stderr=PIPE)
     stdout, _ = child.communicate()
     if stdout:
