@@ -79,3 +79,20 @@ def test_pytest_ruff_noformat():
     ).communicate()
     assert err.decode() == ""
     assert "File would be reformatted" not in out.decode("utf-8")
+
+
+def test_broken_ruff_config():
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--ruff",
+            "tests/assets/broken_config/empty.py",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, err = process.communicate()
+    assert err.decode() == ""
+    assert "unknown field `broken`" in out.decode()
