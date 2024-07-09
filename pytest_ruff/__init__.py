@@ -95,9 +95,13 @@ def check_file(path):
         "--force-exclude",
     ]
     child = Popen(command, stdout=PIPE, stderr=PIPE)
-    stdout, _ = child.communicate()
-    if stdout:
+    stdout, stderr = child.communicate()
+
+    if child.returncode == 1:
         raise RuffError(stdout.decode())
+
+    if child.returncode == 2:
+        raise RuffError(stderr.decode())
 
 
 def format_file(path):
@@ -108,6 +112,9 @@ def format_file(path):
 
     if child.returncode == 1:
         raise RuffError("File would be reformatted")
+
+    if child.returncode == 2:
+        raise RuffError("Ruff terminated abnormally")
 
 
 def pytest_exception_interact(node, call, report):
