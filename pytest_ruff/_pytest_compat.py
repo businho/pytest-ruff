@@ -6,7 +6,7 @@ from typing import Dict
 import pytest
 
 try:
-    from pytest import Stash, StashKey
+    from pytest import Stash as Stash, StashKey
 except ImportError:
     import _pytest.store
 
@@ -36,10 +36,7 @@ def get_stash_object(config):
 
 
 def get_stash(config):
-    missing = object()
-    stash = get_stash_object(config).get(_MTIMES_STASH_KEY, default=missing)
-    assert stash is not missing
-    return stash
+    return get_stash_object(config).get(_MTIMES_STASH_KEY, default=None)
 
 
 def set_stash(config, value):

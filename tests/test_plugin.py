@@ -88,7 +88,7 @@ def test_broken_ruff_config():
             "-m",
             "pytest",
             "--ruff",
-            "tests/assets/broken_config/empty.py",
+            "tests/assets/config_broken/empty.py",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -96,3 +96,21 @@ def test_broken_ruff_config():
     out, err = process.communicate()
     assert err.decode() == ""
     assert "unknown field `broken`" in out.decode()
+
+
+def test_without_pytest_cache():
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--ruff",
+            "-pno:cacheprovider",
+            "tests/assets/ok.py",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, err = process.communicate()
+    assert err.decode() == ""
+    assert "tests/assets/ok.py ." in out.decode()
