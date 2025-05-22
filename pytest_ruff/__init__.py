@@ -20,6 +20,12 @@ def pytest_addoption(parser):
     group.addoption(
         "--ruff-format", action="store_true", help="enable format checking with ruff"
     )
+    group.addoption(
+        "--ruff-config",
+        action="store",
+        type=str,
+        help="uses custom ruff config file",
+    )
 
 
 def pytest_configure(config):
@@ -77,14 +83,23 @@ class RuffError(Exception):
 class RuffFile(pytest.File):
     def collect(self):
         collection = []
+        config_file = None
+        if self.config.option.ruff_config:
+            config_file = self.config.option.ruff_config
         if self.config.option.ruff:
-            collection.append(RuffItem)
+            collection.append(
+                RuffItem.from_parent(self, name="ruff", config_file=config_file)
+            )
         if self.config.option.ruff_format:
-            collection.append(RuffFormatItem.from_parent(self, name="ruff::format"))
-        return [Item.from_parent(self, name=Item.name) for Item in collection]
+            collection.append(
+                RuffFormatItem.from_parent(
+                    self, name="ruff::format", config_file=config_file
+                )
+            )
+        return collection
 
 
-def check_file(path):
+def check_file(path, config_file):
     ruff = find_ruff_bin()
     command = [
         ruff,
@@ -94,6 +109,8 @@ def check_file(path):
         "--output-format=full",
         "--force-exclude",
     ]
+    if config_file:
+        command.append("--config={}".format(config_file))
     child = Popen(command, stdout=PIPE, stderr=PIPE)
     stdout, stderr = child.communicate()
 
@@ -104,9 +121,11 @@ def check_file(path):
         raise RuffError(stderr.decode())
 
 
-def format_file(path):
+def format_file(path, config_file):
     ruff = find_ruff_bin()
     command = [ruff, "format", path, "--quiet", "--check", "--force-exclude"]
+    if config_file:
+        command.append("--config={}".format(config_file))
     with Popen(command) as child:
         pass
 
@@ -125,9 +144,10 @@ def pytest_exception_interact(node, call, report):
 class RuffItem(pytest.Item):
     name = "ruff"
 
-    def __init__(self, *k, **kwargs):
+    def __init__(self, *k, config_file, **kwargs):
         super().__init__(*k, **kwargs)
         self.add_marker("ruff")
+        self._config_file = config_file
 
     def setup(self):
         ruffmtimes = get_stash(self.config)
@@ -148,11 +168,11 @@ class RuffItem(pytest.Item):
         return (self.fspath, None, "")
 
     def handler(self, path):
-        return check_file(path)
+        return check_file(path, self._config_file)
 
 
 class RuffFormatItem(RuffItem):
     name = "ruff::format"
 
     def handler(self, path):
-        return format_file(path)
+        return format_file(path, self._config_file)
