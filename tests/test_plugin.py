@@ -30,12 +30,12 @@ def test_configure_without_ruff(mocker):
 
 def test_check_file():
     with pytest.raises(pytest_ruff.RuffError, match=r"`os` imported but unused"):
-        pytest_ruff.check_file("tests/assets/check_broken.py")
+        pytest_ruff.check_file("tests/assets/check_broken.py", None)
 
 
 def test_format_file():
     with pytest.raises(pytest_ruff.RuffError, match=r"File would be reformatted"):
-        pytest_ruff.format_file("tests/assets/format_broken.py")
+        pytest_ruff.format_file("tests/assets/format_broken.py", None)
 
 
 def test_pytest_ruff():
@@ -96,6 +96,43 @@ def test_broken_ruff_config():
     out, err = process.communicate()
     assert err.decode() == ""
     assert "unknown field `broken`" in out.decode()
+
+
+def test_custom_ruff_config():
+    # fails with default
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--ruff",
+            "--ruff-format",
+            "tests/assets/long_line.py",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, err = process.communicate()
+    assert err.decode() == ""
+    assert "File would be reformatted" in out.decode("utf-8")
+
+    # succeeds with custom
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--ruff",
+            "--ruff-format",
+            "--ruff-config=tests/assets/long_line_config/ruff.toml",
+            "tests/assets/long_line.py",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, err = process.communicate()
+    assert err.decode() == ""
+    assert "tests/assets/long_line.py ." in out.decode()
 
 
 def test_without_pytest_cache():
