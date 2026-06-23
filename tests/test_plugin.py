@@ -1,10 +1,18 @@
+import os
 import subprocess
 import sys
-
-import pytest
+import types
 
 import pytest_ruff
 from pytest_ruff._pytest_compat import Stash, get_stash
+
+
+def _session(item_cls, path):
+    # Build a minimal session holding a single ruff item, enough for the batch
+    # functions, which only read `session.items` and each item's `fspath`.
+    item = item_cls.__new__(item_cls)
+    item.fspath = path
+    return types.SimpleNamespace(items=[item])
 
 
 def test_configure(mocker):
@@ -28,14 +36,20 @@ def test_configure_without_ruff(mocker):
     set_stash_mock.assert_not_called()
 
 
-def test_check_file():
-    with pytest.raises(pytest_ruff.RuffError, match=r"`os` imported but unused"):
-        pytest_ruff.check_file("tests/assets/check_broken.py", None)
+def test_batch_check_results():
+    path = "tests/assets/check_broken.py"
+    session = _session(pytest_ruff.RuffItem, path)
+    failures, error = pytest_ruff.batch_check_results(session, None)
+    assert error is None
+    assert "`os` imported but unused" in failures[os.path.realpath(path)]
 
 
-def test_format_file():
-    with pytest.raises(pytest_ruff.RuffError, match=r"File would be reformatted"):
-        pytest_ruff.format_file("tests/assets/format_broken.py", None)
+def test_batch_format_results():
+    path = "tests/assets/format_broken.py"
+    session = _session(pytest_ruff.RuffFormatItem, path)
+    failing, error = pytest_ruff.batch_format_results(session, None)
+    assert error is None
+    assert os.path.realpath(path) in failing
 
 
 def test_pytest_ruff():
