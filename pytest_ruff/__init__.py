@@ -1,14 +1,15 @@
-from subprocess import Popen, PIPE
+import json
+import os
+from subprocess import PIPE, Popen
 
 import pytest
-
 from ruff.__main__ import find_ruff_bin
 
 from pytest_ruff._pytest_compat import (
+    PYTEST_VER,
     get_stash,
     make_path_kwargs,
     set_stash,
-    PYTEST_VER,
 )
 
 HISTKEY = "ruff/mtimes"
@@ -80,6 +81,103 @@ class RuffError(Exception):
     pass
 
 
+def _realpath(path):
+    return os.path.realpath(str(path))
+
+
+def _run_ruff(session, item_type, args, config_file):
+    """
+    Run ruff once over the collected files of `item_type` and return
+    `(returncode, stdout, stderr)`. `args` is the ruff subcommand and its
+    flags, e.g. ["check", "--output-format=json"].
+    """
+    paths = [str(i.fspath) for i in session.items if type(i) is item_type]
+    command = [find_ruff_bin(), *args, *paths, "--force-exclude"]
+    if config_file:
+        command.append("--config={}".format(config_file))
+    child = Popen(command, stdout=PIPE, stderr=PIPE)
+    stdout, stderr = child.communicate()
+    return child.returncode, stdout, stderr
+
+
+def batch_check_results(session, config_file):
+    """
+    Run ruff once for every collected file and cache the result on the session,
+    so each test item is a lookup instead of its own ruff subprocess.
+    """
+    # Always return early if we've already run ruff this session
+    cached = getattr(session, "_ruff_check", None)
+    if cached is not None:
+        return cached
+
+    returncode, stdout, stderr = _run_ruff(
+        session, RuffItem, ["check", "--quiet", "--output-format=json"], config_file
+    )
+
+    # failures maps each failing file to its rendered ruff message(s)
+    failures = {}
+    error = None
+
+    # returncode 2 means ruff itself failed (e.g. a bad config); report that
+    if returncode == 2:
+        error = stderr.decode()
+    elif stdout.strip():
+        # Load the JSON output from ruff and render each violation as a line
+        for violation in json.loads(stdout):
+            loc = violation["location"]
+            fixable = " [*]" if violation.get("fix") else ""
+            line = "{}:{}:{}: {}{} {}".format(
+                violation["filename"],
+                loc["row"],
+                loc["column"],
+                violation["code"],
+                fixable,
+                violation["message"],
+            )
+            failures.setdefault(_realpath(violation["filename"]), []).append(line)
+
+    # Join each file's lines into a single message for the test failure
+    failures = {path: "\n".join(lines) for path, lines in failures.items()}
+    session._ruff_check = (failures, error)
+    return session._ruff_check
+
+
+def batch_format_results(session, config_file):
+    """
+    Run ruff format once for every collected file and cache the result on the
+    session, so each test item is a lookup instead of its own ruff subprocess.
+    """
+    cached = getattr(session, "_ruff_format", None)
+    if cached is not None:
+        return cached
+
+    returncode, stdout, stderr = _run_ruff(
+        session, RuffFormatItem, ["format", "--check"], config_file
+    )
+
+    failing = set()
+    error = None
+    if returncode == 2:
+        error = stderr.decode()
+    else:
+        # ruff format --check lists each unformatted file as "Would reformat: ..."
+        prefix = "Would reformat: "
+        for line in stdout.decode().splitlines():
+            if line.startswith(prefix):
+                failing.add(_realpath(line[len(prefix) :]))
+
+        # If no files were listed as "Would reformat:" but the return code is 1,
+        # treat it as a failure and show what we can
+        if returncode == 1 and not failing:
+            error = (
+                "Ruff format errorss, but not parse ruff format output:\n"
+                + stdout.decode()
+            )
+
+    session._ruff_format = (failing, error)
+    return session._ruff_format
+
+
 class RuffFile(pytest.File):
     def collect(self):
         collection = []
@@ -97,43 +195,6 @@ class RuffFile(pytest.File):
                 )
             )
         return collection
-
-
-def check_file(path, config_file):
-    ruff = find_ruff_bin()
-    command = [
-        ruff,
-        "check",
-        path,
-        "--quiet",
-        "--output-format=full",
-        "--force-exclude",
-    ]
-    if config_file:
-        command.append("--config={}".format(config_file))
-    child = Popen(command, stdout=PIPE, stderr=PIPE)
-    stdout, stderr = child.communicate()
-
-    if child.returncode == 1:
-        raise RuffError(stdout.decode())
-
-    if child.returncode == 2:
-        raise RuffError(stderr.decode())
-
-
-def format_file(path, config_file):
-    ruff = find_ruff_bin()
-    command = [ruff, "format", path, "--quiet", "--check", "--force-exclude"]
-    if config_file:
-        command.append("--config={}".format(config_file))
-    with Popen(command) as child:
-        pass
-
-    if child.returncode == 1:
-        raise RuffError("File would be reformatted")
-
-    if child.returncode == 2:
-        raise RuffError("Ruff terminated abnormally")
 
 
 def pytest_exception_interact(node, call, report):
@@ -168,11 +229,20 @@ class RuffItem(pytest.Item):
         return (self.fspath, None, "")
 
     def handler(self, path):
-        return check_file(path, self._config_file)
+        failures, error = batch_check_results(self.session, self._config_file)
+        if error:
+            raise RuffError(error)
+        message = failures.get(_realpath(path))
+        if message:
+            raise RuffError(message)
 
 
 class RuffFormatItem(RuffItem):
     name = "ruff::format"
 
     def handler(self, path):
-        return format_file(path, self._config_file)
+        failing, error = batch_format_results(self.session, self._config_file)
+        if error:
+            raise RuffError(error)
+        if _realpath(path) in failing:
+            raise RuffError("File would be reformatted")
